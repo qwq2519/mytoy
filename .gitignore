@@ -22,8 +22,8 @@ bin/
 *.log
 
 # Local data and static assets
-storage/db/*.sqlite
 storage/db/*.db
-storage/db/*.db-journal
 storage/files/
 storage/tmp/
+
+# sensitive files
