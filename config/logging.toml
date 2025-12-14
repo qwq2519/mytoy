@@ -1,0 +1,3 @@
+level = "info"
+file = "storage/tmp/app.log"
+enable_console = true
