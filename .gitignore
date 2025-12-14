@@ -27,3 +27,7 @@ storage/files/
 storage/tmp/
 
 # sensitive files
+
+# tmp
+.gocache
+.cache
