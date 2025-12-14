@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"log"
 	"log/slog"
+	"mytoy/util/logging"
 	"os"
 	"path/filepath"
 
@@ -12,7 +13,6 @@ import (
 	"gorm.io/gorm"
 
 	"mytoy/config"
-	"mytoy/logging"
 )
 
 // NewContainer 初始化依赖注入容器，并注册全局单例依赖。
