@@ -6,4 +6,8 @@
 - 全部 todo 完成并经用户确认后才可清空列表。
 
 ## 当前 TODO
-- （空，待用户确认后添加）
+- [ ] 配置管理器：分段 struct + Extra map，atomic.Value 快照，原子写入文件
+- [ ] 默认配置文件：生成 `config/server.toml`、`config/database.toml`、`config/logging.toml`
+- [ ] 预留配置路由/服务占位：后续扩展 REST 接口读写配置
+- [ ] 启动整合：容器注册配置管理器，入口使用配置初始化端口/DB 等
+- [ ] 拆分 config 包为模块文件，并将 toml 读写工具迁移到 util 包
