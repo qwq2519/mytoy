@@ -1,10 +1,16 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	do "github.com/samber/do/v2"
@@ -45,10 +51,47 @@ func main() {
 	}
 	addr := fmt.Sprintf(":%d", snapshot.Server.Port)
 
+	server := &http.Server{
+		Addr:    addr,
+		Handler: router,
+	}
+
+	serverErr := make(chan error, 1)
+	go func() {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- err
+			return
+		}
+		serverErr <- nil
+	}()
+
 	logger.Info("starting server", "addr", addr)
 
-	if err := router.Run(addr); err != nil {
-		logger.Error("failed to start server", "err", err)
-		os.Exit(1)
+	sigCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	select {
+	case err := <-serverErr:
+		if err != nil {
+			logger.Error("failed to start server", "err", err)
+			os.Exit(1)
+		}
+		return
+	case <-sigCtx.Done():
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	logger.Info("shutting down server")
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.Error("server shutdown error", "err", err)
+	}
+	if err := <-serverErr; err != nil {
+		logger.Error("server exited with error", "err", err)
+	}
+
+	if report := injector.ShutdownWithContext(shutdownCtx); report != nil && len(report.Errors) > 0 {
+		logger.Error("di shutdown finished with errors", "err", report.Error())
 	}
 }

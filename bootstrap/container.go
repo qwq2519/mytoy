@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"io"
 	"log"
 	"log/slog"
 	"mytoy/util/logging"
@@ -14,6 +15,34 @@ import (
 
 	"mytoy/config"
 )
+
+// loggingResource 用于在 DI Shutdown 阶段关闭日志文件句柄。
+type loggingResource struct {
+	closer io.Closer
+}
+
+func (r *loggingResource) Shutdown() error {
+	if r == nil || r.closer == nil {
+		return nil
+	}
+	return r.closer.Close()
+}
+
+// dbResource 用于在 DI Shutdown 阶段关闭底层 sql.DB。
+type dbResource struct {
+	db *gorm.DB
+}
+
+func (r *dbResource) Shutdown() error {
+	if r == nil || r.db == nil {
+		return nil
+	}
+	sqlDB, err := r.db.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.Close()
+}
 
 // NewContainer 初始化依赖注入容器，并注册全局单例依赖。
 func NewContainer() do.Injector {
@@ -32,10 +61,11 @@ func NewContainer() do.Injector {
 		}
 		snap := cfgMgr.Snapshot()
 
-		logger, writer, err := logging.NewLogger(snap.Logging)
+		logger, writer, closer, err := logging.NewLogger(snap.Logging)
 		if err != nil {
 			return nil, err
 		}
+		do.ProvideValue(i, &loggingResource{closer: closer})
 
 		slog.SetDefault(logger)
 
@@ -77,6 +107,8 @@ func NewContainer() do.Injector {
 			return nil, err
 		}
 		logger.Info("connected to SQLite database", "path", dbPath)
+
+		do.ProvideValue(i, &dbResource{db: db})
 
 		return db, nil
 	})

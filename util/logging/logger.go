@@ -11,20 +11,20 @@ import (
 	"mytoy/config"
 )
 
-// NewLogger 根据配置创建 slog.Logger，并返回复用的 writer（用于 Gin 等标准输出）。
-func NewLogger(cfg config.LoggingConfig) (*slog.Logger, io.Writer, error) {
+// NewLogger 根据配置创建 slog.Logger，并返回复用的 writer（用于 Gin 等标准输出）与可关闭的文件句柄。
+func NewLogger(cfg config.LoggingConfig) (*slog.Logger, io.Writer, io.Closer, error) {
 	level, err := parseLevel(cfg.Level)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	if err := os.MkdirAll(filepath.Dir(cfg.File), 0o755); err != nil {
-		return nil, nil, fmt.Errorf("ensure log dir: %w", err)
+		return nil, nil, nil, fmt.Errorf("ensure log dir: %w", err)
 	}
 
 	file, err := os.OpenFile(cfg.File, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
-		return nil, nil, fmt.Errorf("open log file: %w", err)
+		return nil, nil, nil, fmt.Errorf("open log file: %w", err)
 	}
 
 	writers := []io.Writer{file}
@@ -38,7 +38,7 @@ func NewLogger(cfg config.LoggingConfig) (*slog.Logger, io.Writer, error) {
 	})
 	logger := slog.New(handler)
 
-	return logger, multi, nil
+	return logger, multi, file, nil
 }
 
 func parseLevel(level string) (slog.Level, error) {
